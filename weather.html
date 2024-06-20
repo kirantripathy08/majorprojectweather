@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather Forecast Website</title>
+    <style>
+        body {
+            font-family:Georgia, 'Times New Roman', Times, serif;
+            margin: 0;
+            padding: 20px;
+            background: #f4f4f4;
+            text-align: center;
+            transition: background 1s ease-in-out;
+            color:blueviolet
+        }
+        .container {
+            font-family:Georgia, 'Times New Roman', Times, serif;
+            max-width: 600px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            animation: fadeIn 1s ease-in-out;
+            color:rgb(49, 6, 70);
+            
+        }
+        h1 {
+            animation: slideDown 1s ease-in-out;
+        }
+        input {
+            padding: 10px;
+            margin-bottom: 20px;
+            width: calc(100% - 22px);
+            box-sizing: border-box;
+            animation: expand 1s ease-in-out;
+        }
+        .weather-info {
+            margin-bottom: 20px;
+            opacity: 0;
+            animation: fadeInUp 1s forwards;
+            animation-delay: 0.5s;
+           
+        }
+        canvas {
+            max-width: 100%;
+            margin-bottom: 20px;
+            opacity: 0;
+            animation: fadeInUp 1s forwards;
+            animation-delay: 1s;
+        }
+        .video-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: -1;
+        }
+        video {
+            display: none;
+        }
+        .copyright {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            color:black;
+            font-size: 14px;
+            background-color: antiquewhite;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes expand {
+            from { width: 0; }
+            to { width: calc(100% - 22px); }
+        }
+        @keyframes updateChart {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+
+<video id="video-bg" class="video-background" autoplay loop muted playsinline>
+    <source id="video-source" src="" type="video/mp4">
+</video>
+
+<div class="container">
+    <h1>Weather Forecast App</h1>
+    <input type="text" id="city" placeholder="Enter city name">
+    <div class="weather-info">
+        <h2 id="current-weather"></h2>
+        <p id="current-temp"></p>
+        <p id="current-humidity"></p>
+        <p id="current-wind"></p>
+        <p id="current-time"></p>
+    </div>
+    <canvas id="forecastChart" width="400" height="200"></canvas>
+</div>
+<div class="copyright">
+    &copy; 2024 Kiran Tripathy
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    const apiKey = '7d2fabd808e2cdeb7907261d8201bd5a';
+    const defaultCity = 'Delhi';
+
+    async function fetchWeather(city) {
+        const response = await fetch(`https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${apiKey}&units=metric`);
+        const data = await response.json();
+        return data;
+    }
+
+    async function fetchForecast(city) {
+        const response = await fetch(`https://api.openweathermap.org/data/2.5/forecast?q=${city}&appid=${apiKey}&units=metric`);
+        const data = await response.json();
+        return data;
+    }
+
+    function updateVideoBackground(weatherCondition) {
+        let videoSrc = '';
+        switch(weatherCondition) {
+            case 'Clear':
+                videoSrc = 'clear.mp4';
+                break;
+            case 'Clouds':
+                videoSrc = 'cloudy.mp4';
+                break;
+            case 'Rain':
+                videoSrc = 'rain.mp4';
+                break;
+            case 'Snow':
+                videoSrc = 'snowy.mp4';
+                break;
+            case 'Haze':
+                videoSrc = 'haze.mp4';
+                break;
+            case 'Thunderstorm':
+                videoSrc = 'thunderstorm.mp4';
+                break;
+            case 'Broken Clouds':
+                videoSrc = 'broken-clouds.mp4';
+                break;
+            case 'Overcast Clouds':
+                videoSrc = 'Overcast clouds.mp4';
+                break;
+            case 'Scattered Clouds':
+                videoSrc = 'Scattered clouds.mp4';
+                break;
+            case 'Mist':
+                videoSrc = 'mist.mp4';
+                break;
+            case 'Smoke':
+                videoSrc = 'smoke.mp4';
+                break;
+            
+            default:
+                videoSrc = 'default.mp4';
+                break;
+        }
+        const video = document.getElementById('video-bg');
+        const source = document.getElementById('video-source');
+        source.src = videoSrc;
+        video.load();
+        video.style.display = 'block';
+    }
+
+    async function displayWeather(city) {
+        const weather = await fetchWeather(city);
+        const forecast = await fetchForecast(city);
+
+        document.getElementById('current-weather').innerText = capitalizeWords(weather.weather[0].description);
+        document.getElementById('current-temp').innerText = `Temperature: ${weather.main.temp}°C`;
+        document.getElementById('current-humidity').innerText = `Humidity: ${weather.main.humidity}%`;
+        document.getElementById('current-wind').innerText = `Wind Speed: ${weather.wind.speed} m/s`;
+        document.getElementById('current-time').innerText = `Date & Time: ${new Date().toLocaleString()}`;
+
+        updateVideoBackground(weather.weather[0].main);
+
+        const dates = forecast.list.map(item => new Date(item.dt * 1000).toLocaleDateString());
+        const temps = forecast.list.map(item => item.main.temp);
+        const humidities = forecast.list.map(item => item.main.humidity);
+        const conditions = forecast.list.map(item => capitalizeWords(item.weather[0].description));
+
+        const ctx = document.getElementById('forecastChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: dates,
+                datasets: [
+                    {
+                        label: 'Temperature (°C)',
+                        data: temps,
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 1,
+                        fill: false,
+                        pointBackgroundColor: 'rgba(75, 192, 192, 1)',
+                        pointBorderColor: 'rgba(75, 192, 192, 1)',
+                        pointHoverBackgroundColor: 'rgba(75, 192, 192, 1)',
+                        pointHoverBorderColor: 'rgba(75, 192, 192, 1)'
+                    },
+                    {
+                        label: 'Humidity (%)',
+                        data: humidities,
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        borderWidth: 1,
+                        fill: false,
+                        pointBackgroundColor: 'rgba(54, 162, 235, 1)',
+                        pointBorderColor: 'rgba(54, 162, 235, 1)',
+                        pointHoverBackgroundColor: 'rgba(54, 162, 235, 1)',
+                        pointHoverBorderColor: 'rgba(54, 162, 235, 1)'
+                    },
+                    {
+                        label: 'Weather Condition',
+                        data: conditions,
+                        borderColor: 'rgba(153, 102, 255, 1)',
+                        borderWidth: 1,
+                        fill: false,
+                        pointBackgroundColor: 'rgba(153, 102, 255, 1)',
+                        pointBorderColor: 'rgba(153, 102, 255, 1)',
+                        pointHoverBackgroundColor: 'rgba(153, 102, 255, 1)',
+                        pointHoverBorderColor: 'rgba(153, 102, 255, 1)'
+                    }
+                ]
+            },
+            options: {
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        ticks: {
+                            color: '#000', // Darker color
+                            font: {
+                                weight: 'bold' // Bolder font
+                            }
+                        }
+                    },
+                    y: {
+                        ticks: {
+                            color: '#000', // Darker color
+                            font: {
+                                weight: 'bold' // Bolder font
+                            }
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: '#000', // Darker color
+                            font: {
+                                weight: 'bold' // Bolder font
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Trigger animations
+        document.querySelector('.weather-info').style.animation = 'fadeInUp 1s forwards';
+        document.querySelector('canvas').style.animation = 'updateChart 1s forwards';
+    }
+
+    function capitalizeWords(str) {
+        return str.replace(/\b\w/g, char => char.toUpperCase());
+    }
+
+    document.getElementById('city').addEventListener('keyup', function(event) {
+        if (event.key === 'Enter') {
+            displayWeather(event.target.value);
+        }
+    });
+
+    // Default location weather
+    displayWeather(defaultCity);
+</script>
+
+</body>
+</html>
